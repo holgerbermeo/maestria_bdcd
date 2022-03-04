@@ -1,0 +1,26 @@
+library(xml2)
+library(XML)
+library(tidyverse)
+library(rvest)
+
+link = "d:/2021/Factura.xml"
+factura = xmlParse("d:/2021/Factura.xml")
+
+cdata = xpathSApply(factura, "//text()", xmlValue)
+cdata[5]
+
+tags = cdata[5]
+tags_html =  read_html(tags)
+detalles = html_nodes(tags_html, "detalle")
+detalles
+html_children(detalles)
+descripcion = detalles %>% html_elements("descripcion") %>% html_text2()
+cantidad = detalles %>% html_elements("cantidad") %>% html_text2()
+preciounitario = detalles %>% html_elements("preciounitario") %>% html_text2()
+
+data.frame(descripcion, cantidad, preciounitario)
+
+#out = strsplit(cdata[5],'')[[1]]
+#out %>% data.frame()
+
+
