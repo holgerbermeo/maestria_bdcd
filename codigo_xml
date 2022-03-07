@@ -3,51 +3,52 @@ library(XML)
 library(tidyverse)
 library(rvest)
 
-link = "d:/R/Trabajo_datos/facturas/3001202201179001691900121081070001140350845001016.xml"
-factura = xmlParse(link)
+link = "d:/2021/Factura.xml"
+factura = xmlParse("d:/2021/Factura.xml")
 
 cdata = xpathSApply(factura, "//text()", xmlValue)
-cdata[4]
+cdata[5]
 
-tags = cdata[4]
+tags = cdata[5]
 tags_html =  read_html(tags)
-tags_html
 detalles = html_nodes(tags_html, "detalle")
 detalles
-
-fechaEmision = html_nodes(tags_html, "infofactura")
-fechaemision = fechaEmision %>% html_elements("fechaemision") %>% html_text2()
-
 html_children(detalles)
-
 descripcion = detalles %>% html_elements("descripcion") %>% html_text2()
 cantidad = detalles %>% html_elements("cantidad") %>% html_text2()
 preciounitario = detalles %>% html_elements("preciounitario") %>% html_text2()
 
-data.frame(fechaemision, descripcion, cantidad, preciounitario)
+data.frame(descripcion, cantidad, preciounitario)
+
+#out = strsplit(cdata[5],'')[[1]]
+#out %>% data.frame()
 
 ######################################## Leer varias facturas ###########
 
-lista = list.files("d:/R/Trabajo_datos/facturas/")
+lista = list.files("d:/2021/R/facturas/")
 lista
 
-facturas = data.frame(fechaemision = "", descripcion = "",cantidad = "",
-                      preciounitario = "")
+facturas = data.frame(fechaemision = "", razonsocial = "", descripcion = "",
+                      cantidad = "", preciounitario = "",
+                      preciototalsinimpuesto = "", impuestos = "")
 
 for (i in 1:length(lista)) {
   
-  ubicacion = "d:/R/Trabajo_datos/facturas/"
+  ubicacion = "d:/2021/R/facturas/"
   link = paste0(ubicacion,lista[i])
   factura = xmlParse(link)
   
   cdata = xpathSApply(factura, "//text()", xmlValue)
   cdata[4]
   
-  tags = cdata[4]
-  tags_html =  read_html(tags)
+  tags = cdata[5]
+  tags_html = read_html(tags)
   tags_html
   detalles = html_nodes(tags_html, "detalle")
   detalles
+  
+  razonsocial = html_nodes(tags_html, "infotributaria")
+  razonsocial = razonsocial %>% html_elements("razonsocial") %>% html_text2()
   
   fechaEmision = html_nodes(tags_html, "infofactura")
   fechaemision = fechaEmision %>% html_elements("fechaemision") %>% html_text2()
@@ -57,12 +58,22 @@ for (i in 1:length(lista)) {
   descripcion = detalles %>% html_elements("descripcion") %>% html_text2()
   cantidad = detalles %>% html_elements("cantidad") %>% html_text2()
   preciounitario = detalles %>% html_elements("preciounitario") %>% html_text2()
+  preciototalsinimpuesto = detalles %>% html_elements("preciototalsinimpuesto") %>% html_text2()
+  impuestos = detalles %>% html_elements("valor") %>% html_text2()
   
-  factur = data.frame(fechaemision, descripcion, cantidad, preciounitario)
+  factur = data.frame(fechaemision, razonsocial, descripcion, cantidad,
+                      preciounitario, preciototalsinimpuesto, impuestos)
   facturas = facturas %>% full_join(factur)
   
   print(lista[i])
   
 }
+facturas$preciototalsinimpuesto = as.numeric(facturas$preciototalsinimpuesto)
+facturas_1 = facturas %>% group_by(razonsocial,fechaemision) %>% 
+  summarise(total = sum(preciototalsinimpuesto))
 
-facturas %>% filter(grepl('PIMIENTO', descripcion))
+facturas_1$fechaemision = as.Date(facturas_1$fechaemision, format = "%d/%m/%Y")
+
+facturas_1 %>% filter(razonsocial == "CORPORACION FAVORITA C.A.") %>%
+ggplot()+
+  geom_line(aes(x = fechaemision, y = total))
